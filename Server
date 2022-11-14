@@ -1,0 +1,125 @@
+//package methodtest.newServer;
+
+import java.net.*;
+import java.io.*;
+
+/**
+ * server
+ */
+public class server {
+    static ServerSocket serverSocket = null;
+
+    public static void main(String[] args) throws IOException {
+        try {
+            ServerSocket serverSocket = new ServerSocket(5000);
+
+            int Numclient = 1;
+            // -----------------
+            System.out.println("[ Wait for Client join the Server ]");
+
+            while (true) {
+                Socket socket = serverSocket.accept();
+                System.out.println("============================================");
+                System.out.println("|           New Client Connected           |");
+                System.out.println("|               Client No: " + Numclient + "               |");
+                System.out.println("============================================");
+                ClientHandler clientSock = new ClientHandler(socket, Numclient);
+                new Thread(clientSock).start();
+                Numclient++;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+// System.out.println("[ Wait for Client join the Server ]");
+// --------------------------------ClientHandler------------------------------------
+class ClientHandler implements Runnable {
+    Socket clientSocket;
+    int clientNo;
+    DataInputStream dis;
+    DataOutputStream dos;
+    File folder = new File("C:/Server/");
+
+    ClientHandler(Socket socket, int count) {
+        clientSocket = socket;
+        clientNo = count;
+    }
+
+    public void run() {
+
+        try {
+            String cm = "", sm = "", namefile = "";
+            boolean check = false;
+            dis = new DataInputStream(clientSocket.getInputStream());
+            dos = new DataOutputStream(clientSocket.getOutputStream());
+            while (!clientSocket.isClosed()) {
+
+                /* start 1 server send from client */
+                sm = "|             File in Server               |";
+                // serverMessage += " PRESS 1 2 3 OR type name file";
+                dos.writeUTF(sm); // probleam
+                dos.flush();
+                /* end 1 server send from client */
+
+                /* start 2 server send to client */
+                cm = dis.readUTF();
+                System.out.println("[ " + "Client" + clientNo + " ]" + " Select File name: " + cm);
+                /* end 2 server get to client */
+
+                /* find something what client want */
+
+                File[] listOfFiles = folder.listFiles();
+                String[] filename = new String[10000];
+                for (int i = 0; i < listOfFiles.length; i++) {
+                    if (listOfFiles[i].isFile()) {
+                        filename[i] = listOfFiles[i].getName();
+                    }
+                }
+
+                for (int i = 0; i < listOfFiles.length; ++i) {
+                    if (cm.equals(filename[i])) {
+                        namefile = filename[i];
+                        System.out.println("[ SERVER ] Send File: " + namefile);
+                        check = true;
+                        break;
+                    }
+                }
+
+                /* find something what client want */
+                /* start 3 server get to client */
+                dos.writeUTF(sm);
+                dos.writeBoolean(check);
+                dos.flush();
+                /* end 3 server send to client */
+
+                /* 4 send file to client */
+                if (check == true) {
+
+                    String file_name = namefile;
+                    File myfile = new File("C:/Server/" + file_name);
+                    byte brr[] = new byte[(int) myfile.length()];
+                    FileInputStream fis = new FileInputStream(myfile);
+                    BufferedInputStream bis = new BufferedInputStream(fis);
+                    BufferedOutputStream out = new BufferedOutputStream(clientSocket.getOutputStream());
+                    int count1;
+                    while ((count1 = bis.read(brr)) > 0) {
+                        out.write(brr, 0, count1);
+                    }
+                    fis.close();
+                    bis.close();
+                    out.close();
+                    System.out.println("[ SERVER ] Send File:  " + namefile + " Successful!!");
+                    System.out.println("[ SERVER ] Client: " + clientNo + " Disconnected!");
+                }
+                /* 4 send file to client */
+            }
+            dis.close();
+            dos.close();
+            clientSocket.close();
+        } catch (Exception ex) {
+        }
+    }
+
+}
