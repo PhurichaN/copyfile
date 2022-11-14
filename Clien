@@ -1,0 +1,117 @@
+//package methodtest.newServer;
+
+import java.net.*;
+import java.util.Scanner;
+import java.io.*;
+
+public class client {
+    static Socket socket = null;
+    static DataInputStream dis;
+    static DataOutputStream dos;
+    static String cm = "", sm = "", namefile = "";
+    static File folder = new File("C:/Server/");
+    
+    
+    public static void main(String[] args) throws Exception {
+        try {
+            socket = new Socket("localhost", 5000);
+            dis = new DataInputStream(socket.getInputStream());
+            dos = new DataOutputStream(socket.getOutputStream());
+            // BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            Scanner sc = new Scanner(System.in);
+
+            boolean check;
+            while (!socket.isClosed()) {
+                // start 1 cilent get from server
+                System.out.println(" ________________________________________");
+                System.out.println("|                                          |");
+                sm = dis.readUTF(); // probleam
+                System.out.println(sm);
+                System.out.println("|__________________________________________|");
+                System.out.println("|                                          |");
+                File[] listOfFiles = folder.listFiles();
+                for (int i = 0; i < listOfFiles.length; i++) {
+                    if (listOfFiles[i].isFile()) {
+                        System.out.println("     File: " + listOfFiles[i].getName());
+                    }
+                }
+                System.out.println("|                                          |");
+                System.out.println("|__________________________________________|");
+                // end 1 cilent get from server
+
+                // start 2 cilent send to server
+                System.out.print("[ CLEINT ] Select File: ");
+                cm = sc.nextLine(); // for input form keyboard
+                dos.writeUTF(cm);
+                namefile = cm;
+                dos.flush();
+                // end 2 cilent send to server
+
+                // strat 3 cilent get to server
+                sm = dis.readUTF();
+                check = dis.readBoolean();
+                // System.out.println("SERVER REPLY : " + serverMessage + " Status : " + check);
+                // end 3 cilent get to server
+
+                // 4 download file form server
+                if (check == true) {
+                    dos.writeUTF(cm);
+                    System.out.println("[ SERVER ] Client Select File name: " + namefile);
+                    downdloadFile downdloadFile = new downdloadFile(socket, namefile);
+
+                    Thread thread = new Thread(downdloadFile);
+                    thread.start();
+                    thread.join();
+
+                } else {
+                    System.out.println("============================================");
+                    System.out.println("            [ SERVER ]: No File!");
+                    System.out.println("        [ SERVER ]: Select File Again");
+                    System.out.println("============================================");
+                }
+                /* 4 download file form server */
+            }
+            dis.close();
+            dos.close();
+            socket.close();
+        } catch (IOException e) {
+
+        } finally {
+            System.out.println("[ CLEINT ] Leave The Server!");
+        }
+    }
+}
+
+class downdloadFile implements Runnable {
+    Socket socket = null;
+    String file_name = null;
+    InputStream is = null;
+    int bufferSize;
+    FileOutputStream fos = null;
+    BufferedOutputStream bos = null;
+
+    downdloadFile(Socket socket, String name_file) {
+        this.socket = socket;
+        this.file_name = name_file;
+    }
+
+    public void run() {
+        try {
+            is = socket.getInputStream();
+            bufferSize = socket.getReceiveBufferSize();
+            fos = new FileOutputStream("C:/Client/" + file_name);/// * */
+            bos = new BufferedOutputStream(fos);
+            byte[] bytes = new byte[8*1024];
+            int len = 0;
+            while ((len = is.read(bytes)) >= 0) {
+                bos.write(bytes, 0, len);
+            }
+            System.out.println("[ SERVER ] Download file " + file_name + " Successful!!");
+            bos.close();
+            is.close();
+
+        } catch (Exception e) {
+        }
+    }
+
+}
